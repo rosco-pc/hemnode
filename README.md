@@ -17,15 +17,28 @@ the indicated hour
 
 # Installation
 
-1. Install tellstick: 
+1. Install [tellstick](http://developer.telldus.se/wiki/Software)
+   1. OPTIONAL: configure your devices 
 1. Install [node-red](https://nodered.org/docs/getting-started/)
 1. Install the following nodes
    - [dashboard](https://github.com/node-red/node-red-dashboard)
    - [sunevents](https://github.com/freakent/node-red-contrib-sunevents)
    - [tellstick](https://github.com/emiloberg/node-red-contrib-tellstick)
-1. Import the flows and deploy them
-1. Adjust flows to your devices, initialization should put all configured 
-receivers in the debug tab (copied from tellstick configuration in /etc/tellstick.conf)
+1. Import the flows
+1. Adjust flows to your devices, need to adjust 
+   1. the dashboard nodes (siwtch and button), 
+   1. the _process schedule_ node: 
+change number of ports and make sure that the port number corresponds to the 
+_device id - 1_
+   1. Change the special handling for some of the lights
+   1. Make sure you learn all you input devices
+
+Device hanlding 
+- initialization should put all configured devices (from step 1a) in the 
+debug tab (copied from tellstick configuration in /etc/tellstick.conf)
+- Alternativley you can use the tellstick_out node to 
+[add additional devices](https://github.com/emiloberg/node-red-contrib-tellstick#configure-devices) 
+If you do change your flow to add the new device aswell+-
   
 # License
 

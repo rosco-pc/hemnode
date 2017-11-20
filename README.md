@@ -18,7 +18,7 @@ the indicated hour
 # Installation
 
 1. Install [tellstick](http://telldus.com/resources/)
-   a. OPTIONAL: configure your devices 
+   1. OPTIONAL: configure your devices 
 1. Install [node-red](https://nodered.org/docs/getting-started/)
 1. Install the following nodes
    - [dashboard](https://github.com/node-red/node-red-dashboard)
@@ -26,12 +26,12 @@ the indicated hour
    - [tellstick](https://github.com/emiloberg/node-red-contrib-tellstick)
 1. Import the flows
 1. Adjust flows to your devices, need to adjust 
-   a. the dashboard nodes (siwtch and button), 
-   a. the _process schedule_ node: 
+   1. the dashboard nodes (siwtch and button), 
+   1. the _process schedule_ node: 
 change number of ports and make sure that the port number corresponds to the 
 _device&nbsp;id&nbsp;-&nbsp;1_
-   a. Change the special handling for some of the lights
-   a. Make sure you learn all you input devices
+   1. Change the special handling for some of the lights
+   1. Make sure you learn all you input devices
 
 Device hanlding 
 - initialization should put all configured devices (from step 1a) in the 

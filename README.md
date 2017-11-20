@@ -18,8 +18,8 @@ the indicated hour
 1. Install tellstick: 
 1. Install [node-red](https://nodered.org/docs/getting-started/)
 1. Install the following nodes
-  1. [sunevents](https://github.com/freakent/node-red-contrib-sunevents)
-  1. [tellstick](https://github.com/emiloberg/node-red-contrib-tellstick)
+   - [sunevents](https://github.com/freakent/node-red-contrib-sunevents)
+   - [tellstick](https://github.com/emiloberg/node-red-contrib-tellstick)
 1. Import the flows and deploy them
 1. Adjust flows to your devices, initialization should put all configured 
 receivers in the debug tab (copied from tellstick configuration in /etc/tellstick.conf)

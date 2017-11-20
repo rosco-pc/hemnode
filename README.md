@@ -3,7 +3,9 @@ My home automation project to control lights and equipment in my house based
 on node-red and a few additional nodes. It allows to control lights and 
 equipment based on solar events (for the moment this is fixed in the flow) or
 based on a schedule.
+
 ![mobile UI](screenshots/ui.png)  ![scheduler](screenshots/scheduler.png)
+
 The scheduler is based on: [Hourly ON/OFF Week Scheduler Dashboard - DEHN.IO v0.1](https://gist.github.com/3b031629c8450d2098dd3183ccf84be4)
 
 It has been extended to allow setting a random time (Rnd) with the following 

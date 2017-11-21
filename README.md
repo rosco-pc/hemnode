@@ -7,6 +7,11 @@ based on a schedule.
 This is running on a raspberry pi and will not run on windows without changes. 
 It might run on a Mac.
 
+Control unit is a [Tellstick duo](http://telldus.com/produkt/tellstick-duo/) 
+(sorry only in Swedish and an outgoing product, I'm late in the game and 
+everybody is moving to wifi/IoT, although god only knows why: 
+https://arstechnica.com/information-technology/2017/10/assessing-the-threat-the-reaper-botnet-poses-to-the-internet-what-we-know-now/)
+
 
 ![mobile UI](screenshots/ui.png)  ![scheduler](screenshots/scheduler.png)
 

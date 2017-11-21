@@ -9,8 +9,11 @@ It might run on a Mac.
 
 Control unit is a [Tellstick duo](http://telldus.com/produkt/tellstick-duo/) 
 (sorry only in Swedish and an outgoing product, I'm late in the game and 
-everybody is moving to wifi/IoT, although god only knows why: 
-https://arstechnica.com/information-technology/2017/10/assessing-the-threat-the-reaper-botnet-poses-to-the-internet-what-we-know-now/)
+everybody is moving to wifi/IoT, although god 
+[only](https://arstechnica.com/information-technology/2017/10/assessing-the-threat-the-reaper-botnet-poses-to-the-internet-what-we-know-now/)
+[knows](http://www.businessinsider.com/internet-of-things-security-privacy-2016-8?r=US&IR=T&IR=T) 
+[why](https://www.networkworld.com/article/3217664/internet-of-things/how-to-improve-iot-security.html)) 
+
 
 
 ![mobile UI](screenshots/ui.png)  ![scheduler](screenshots/scheduler.png)

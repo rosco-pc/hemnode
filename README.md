@@ -37,21 +37,15 @@ which will then be indicated by a blue background.
 pressing the buttons on the screen will then do the following:
 
 | button | Action |
-| ... | ... |
-![down](screenshots/down.png) | select previous
+| --- | --- |
+| ![down](screenshots/down.png) | select previous |
+| ![up](screenshots/up.png) | select next |
+| ![copy](screenshots/copy.png) | copy action(s) to next item |
+| ![save](screenshots/save.png) | save schedule |
+| ![cancel](screenshots/cancel.png) | cancel changes up till last save |
+| ![sun](screenshots/sun.png) | switch to sun event schedule (any setting here will overwrite the hour based setting) |
+| ![schedule](screenshots/schedule.png) | switch to hour based schedule |
 
-![up](screenshots/up.png) | select next
-
-![copy](screenshots/copy.png) | copy action(s) to next item
-
-![save](screenshots/save.png) | save schedule
-
-![cancel](screenshots/cancel.png) | cancel changes up till last save
-
-
-![sun](screenshots/sun.png) | switch to sun event schedule (any setting here will overwrite the hour based setting)
-
-![schedule](screenshots/schedule.png) | switch to hour based schedule
 # Installation
 
 1. Install [tellstick](http://telldus.com/resources/)

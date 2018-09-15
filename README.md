@@ -34,21 +34,22 @@ and turn off between 19:30 and 19:59
 
 The scheduler allows to make chnages to most fields by selecting the field, \
 which will then be indicated by a blue background.
-pressing the buttons on the screen will tehn do the following:
-![down](screenshots/down.png) select previous
+pressing the buttons on the screen will then do the following:
+... | ...
+![down](screenshots/down.png) | select previous
 
-![up](screenshots/up.png) select next
+![up](screenshots/up.png) | select next
 
-![copy](screenshots/copy.png) copy action(s) to next item
+![copy](screenshots/copy.png) | copy action(s) to next item
 
-![save](screenshots/save.png) save schedule
+![save](screenshots/save.png) | save schedule
 
-![cancel](screenshots/cancel.png) cancel changes up till last save
+![cancel](screenshots/cancel.png) | cancel changes up till last save
 
 
-![sun](screenshots/sun.png) switch to sun event schedule (any setting here will overwrite the hour based setting)
+![sun](screenshots/sun.png) | switch to sun event schedule (any setting here will overwrite the hour based setting)
 
-![schedule](screenshots/schedule.png) switch to hour based schedule
+![schedule](screenshots/schedule.png) | switch to hour based schedule
 # Installation
 
 1. Install [tellstick](http://telldus.com/resources/)

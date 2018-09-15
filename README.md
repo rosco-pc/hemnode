@@ -35,7 +35,9 @@ and turn off between 19:30 and 19:59
 The scheduler allows to make chnages to most fields by selecting the field, \
 which will then be indicated by a blue background.
 pressing the buttons on the screen will then do the following:
-... | ...
+
+| button | Action |
+| ... | ... |
 ![down](screenshots/down.png) | select previous
 
 ![up](screenshots/up.png) | select next

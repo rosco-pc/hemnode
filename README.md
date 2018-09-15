@@ -16,9 +16,7 @@ everybody is moving to wifi/IoT, although god
 
 
 
-<img src="screenshots/ui.png" alt="mobile UI" width="230" height="300"/> 
-<img src="screenshots/scheduler.png" alt="scheduler" width="230" height="300"/> 
-<img src="screenshots/sunonoff.png" alt="sun event" width="230" height="300"/>
+<img src="screenshots/ui.png" alt="mobile UI" width="230" height="300"/> <img src="screenshots/scheduler.png" alt="scheduler" width="230" height="300"/> <img src="screenshots/sunonoff.png" alt="sun event" width="230" height="300"/>
 
 The scheduler is based on: [Hourly ON/OFF Week Scheduler Dashboard - DEHN.IO v0.1](https://gist.github.com/3b031629c8450d2098dd3183ccf84be4)
 

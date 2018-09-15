@@ -16,7 +16,7 @@ everybody is moving to wifi/IoT, although god
 
 
 
-![mobile UI](screenshots/ui.png)  ![scheduler](screenshots/scheduler.png)
+![mobile UI](screenshots/ui.png) ![scheduler](screenshots/scheduler.png) ![sun event](screenshots/sunonoff.png)
 
 The scheduler is based on: [Hourly ON/OFF Week Scheduler Dashboard - DEHN.IO v0.1](https://gist.github.com/3b031629c8450d2098dd3183ccf84be4)
 
@@ -32,6 +32,17 @@ is it will only turn on randomly and turn off at the end of the hour
 In the screenshot shown above the lights will turn on between 17:01 and 17:30 
 and turn off between 19:30 and 19:59
 
+The scheduler allows to make chnages to most fields by selecting the field, \
+which will then be indicated by a blue background.
+pressing the buttons on the screen will tehn do the following:
+![down](screenshots/down.png) select previous
+![up](screenshots/up.png) select next
+![copy](screenshots/copy.png) copy action(s) to next item
+![save](screenshots/save.png) save schedule
+![cancel](screenshots/cancel.png) cancel changes up till last save
+
+![sun](screenshots/sun.png) switch to sun event schedule (any setting here will overwrite the hour based setting)
+![schedule](screenshots/schedule.png) switch to hour based schedule
 # Installation
 
 1. Install [tellstick](http://telldus.com/resources/)
@@ -46,7 +57,7 @@ and turn off between 19:30 and 19:59
    - the dashboard nodes (siwtch and button), 
    - the _process schedule_ node: 
 change number of ports and make sure that the port number corresponds to the 
-_device&nbsp;id&nbsp;-&nbsp;1_
+_deviceid&nbsp;-&nbsp;1_
    - Change the special handling for some of the lights
    - Make sure you learn all you input devices
 

@@ -16,7 +16,9 @@ everybody is moving to wifi/IoT, although god
 
 
 
-![mobile UI](screenshots/ui.png) ![scheduler](screenshots/scheduler.png) ![sun event](screenshots/sunonoff.png)
+<img src="screenshots/ui.png" alt="mobile UI" width="230" height="300"/> 
+<img src="screenshots/scheduler.png" alt="scheduler" width="230" height="300"/> 
+<img src="screenshots/sunonoff.png" alt="sun event" width="230" height="300"/>
 
 The scheduler is based on: [Hourly ON/OFF Week Scheduler Dashboard - DEHN.IO v0.1](https://gist.github.com/3b031629c8450d2098dd3183ccf84be4)
 
@@ -36,12 +38,18 @@ The scheduler allows to make chnages to most fields by selecting the field, \
 which will then be indicated by a blue background.
 pressing the buttons on the screen will tehn do the following:
 ![down](screenshots/down.png) select previous
+
 ![up](screenshots/up.png) select next
+
 ![copy](screenshots/copy.png) copy action(s) to next item
+
 ![save](screenshots/save.png) save schedule
+
 ![cancel](screenshots/cancel.png) cancel changes up till last save
 
+
 ![sun](screenshots/sun.png) switch to sun event schedule (any setting here will overwrite the hour based setting)
+
 ![schedule](screenshots/schedule.png) switch to hour based schedule
 # Installation
 

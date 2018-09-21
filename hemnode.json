@@ -1,1 +1,1516 @@
-[{"id":"f887dac4.5b405","type":"function","z":"4b9502df.05cf0c","name":"Process controls","func":"// Constants\nconst debug=true\nconst Actions = ['Off', 'On', 'Random']\nconst Days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nconst selected = ['Device', 'Day','Sun ON event','Sun OFF event'];\nconst sunevents = [\"\",\"nauticalDawn\",\"dawn\",\"nadir\",\"sunrise\",\"sunriseEnd\",\n                   \"goldenHourEnd\",\"solarNoon\",\"goldenHour\",\"sunsetStart\",\n                   \"sunset\",\"dusk\",\"nauticalDusk\",\"night\",\"nightEnd\"]\n\nfunction findDevice(devices, devId){\n  for (let d in devices) {\n    if (devices[d].id==devId) return [d, devices[d].name]\n  }\n  return ''\n}\n\n// Get saved data\nlet devices = flow.get('devices');\nlet schedule = flow.get('schedule');\nlet dev = flow.get('device');\nlet devId = devices[dev].id-1;\n\nlet now = new Date();\nlet day = Number.isInteger(flow.get('day'))?flow.get('day'):now.getDay();\nlet selector = Number.isInteger(flow.get('selector'))?flow.get('selector'):now.getHours();\nlet hour = selector<24?(day*24)+selector:0;    // Get index into schedule\nlet action = schedule[devId][hour];\n\nlet sunon = schedule[devId][169]==-1?sunevents.indexOf('dusk')-1:schedule[devId][169];\nlet sunoff = schedule[devId][170]==-1?sunevents.indexOf('dawn')-1:schedule[devId][170];\n\nlet dLen = Object.keys(devices).length;\nlet sLen = sunevents.length;\nlet aLen = Actions.length;\n\n// Handle requested action\nlet payload = msg.payload\nif (typeof payload === 'undefined') return\n\nmsg={}\nswitch (payload) {\n  case '':\n    if (debug) node.log('Refresh page')\n    flow.set('day',day)\n    flow.set('selector',selector )\n    msg.redraw = true\n    break\n  case \"u\":\n    if ((selector < 24)) {\n      schedule[devId][hour] = (action+1)%aLen;        // Next Hour action \n      //msg.status = Actions[schedule[devId][hour]];\n    } else if (selector == 24) {\n      devId = (devId+1)%dLen;                         // Next Device\n      node.log('Next device: '+devId)\n      //msg.status = \"Next Device\"; \n    } else if (selector == 25) {\n      day = (day+1)%7;                                // Next Day\n      //msg.status = \"Next Day\"; \n    } else if (selector == 26) {\n      schedule[devId][169] = (sunon+1)%sLen;          // Next Sun ON Eevent\n      //msg.status = \"Next Sun Event\"; \n    } else if (selector == 27) {\n      schedule[devId][170] = (sunoff+1)%sLen;         // Next SUn OFF Event\n      //msg.status = \"Next Sun Event\";\n    }\n    break;\n  case \"d\":\n    if (selector < 24) {\n      schedule[devId][hour] = ((action-1)+aLen)%aLen; // Previous Hour action\n      //msg.status = Actions[schedule[devId][hour]];\n    } else if (selector == 24) {\n      devId = ((devId-1)+dLen)%dLen;                  // Previous Device\n      //msg.status = \"Previous Device\";\n    } else if (selector == 25) { \n      day = ((day-1)+7)%7;                            // Previous day\n      //msg.status = \"Previous day\"; \n    } else if (selector == 26) {\n      schedule[devId][169] = ((sunon-1)+sLen)%sLen;   // Previous Sun On Event\n      //msg.status = \"Previous Sun On Event\"; \n    } else if (selector == 27) {\n      schedule[devId][170] = ((sunoff-1)+sLen)%sLen;  // Previous Sun Off Event\n      //msg.status = \"Previous Sun Off Event\";\n    }\n    break;\n  case 'c':\n    //node.log('Selector: '+selector)\n    if (selector < 24) {                            // Copy action to next hour\n      schedule[devId][(hour+1)%168] = schedule[devId][hour];\n      selector = (selector+1)%24;                   // Update selector        \n      if (!selector) day = (day+1)%7                // Update day if roillover \n      msg.status = \"Action copied to the next hour\";\n    } else if (selector == 25) {                    // Copy schedule to next day\n      for (let a = 0; a < 24; a++)\n        schedule[devId][((day+1)%7)*24+a] = schedule[devId][(day*24)+a];\n      day = (day + 1)%7;                           // Next day\n      msg.status = \"Schedule copied to\" + Days[day];\n    } else {\n      msg.status=\"Action not implemented\";\n    }\n    break;\n  case 's':\n    msg.payload = JSON.stringify(schedule);\n    node.send([null, msg, null]);                 // Save and continue\n    msg.payload = '';\n    msg.status = \"Saved Settings\";\n    break;\n  case 'q':\n    msg.payload = '';\n    msg.status = \"Changes canceled\";\n    return [null, null, msg];                     // Read old schedule\n  default:\n    //node.log('default: '+payload+' '+parseInt(payload))\n    selector = parseInt(payload);\n    flow.set('selector', selector)\n    if (selector < 24) {\n      msg.status = \"Changing Hour \" + selector;\n    } else {\n      msg.status = 'Changing ' + selected[selector-24];\n    }\n}\n\n// Save data if there was a payload\ndev = findDevice(devices,devId+1);\nif (['u','d','c'].indexOf(payload)>-1) {\n  node.warn('Saving data')\n  flow.set('schedule', schedule);\n  flow.set('device',dev[0]);\n  flow.set('day', day);\n  flow.set('selector', selector)\n}\n\n// Send data to GUI\nmsg.schedule = schedule[devId];                 // Just the current devices data\nmsg.day = Days[day]; //\nmsg.device = dev[1];\nmsg.selector = selector;\n\nif (debug) node.log('sending msg')\nif (debug) node.log('msg: '+JSON.stringify(msg))\n\nreturn [msg, null, null];","outputs":"3","noerr":0,"x":420,"y":1063,"wires":[["ce23084c.da8808"],["9633e588.20d428"],["fc27dc25.80c6c"]],"inputLabels":["update request"],"outputLabels":["Update page","Backup schedule","Restore schedule"]}]
+[
+    {
+        "id": "4b9502df.05cf0c",
+        "type": "tab",
+        "label": "hemnode",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "b32bf59a.472db",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Living room",
+        "topic": "Living Room",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 149,
+        "y": 340,
+        "wires": [
+            [
+                "9ebd26b3.af149"
+            ]
+        ]
+    },
+    {
+        "id": "b7d27f7c.8729f8",
+        "type": "tellstick-in",
+        "z": "4b9502df.05cf0c",
+        "name": "front_door_motion",
+        "inputconfig": "715e8af7.08fcfc",
+        "x": 170,
+        "y": 620,
+        "wires": [
+            [
+                "3594c1ff.e754de",
+                "c6ec2e11.45f67"
+            ]
+        ]
+    },
+    {
+        "id": "a72a2830.64b198",
+        "type": "tellstick-in",
+        "z": "4b9502df.05cf0c",
+        "name": "front_door_bell",
+        "inputconfig": "cee769f5.931bb8",
+        "x": 160,
+        "y": 660,
+        "wires": [
+            [
+                "3594c1ff.e754de",
+                "c6ec2e11.45f67"
+            ]
+        ]
+    },
+    {
+        "id": "b157866e.c51bb8",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Handle front door lights",
+        "info": "",
+        "x": 140,
+        "y": 580,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "cf38103a.5861f8",
+        "type": "trigger",
+        "z": "4b9502df.05cf0c",
+        "op1": "turnon",
+        "op2": "turnoff",
+        "op1type": "str",
+        "op2type": "str",
+        "duration": "10",
+        "extend": false,
+        "units": "min",
+        "reset": "",
+        "bytopic": "all",
+        "name": "",
+        "x": 580,
+        "y": 540,
+        "wires": [
+            [
+                "8c88deac.6a91a"
+            ]
+        ]
+    },
+    {
+        "id": "c5ac7f6e.a84c",
+        "type": "tellstick-out",
+        "z": "4b9502df.05cf0c",
+        "name": "",
+        "device": "",
+        "devicefriendlyname": "",
+        "method": "",
+        "dimlevel": 0,
+        "x": 1337.75,
+        "y": 378.0000305175781,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "97212500.fa779",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Diner",
+        "topic": "Diner",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 131.75,
+        "y": 260.0000305175781,
+        "wires": [
+            [
+                "97dd1d30.cd2a38"
+            ]
+        ]
+    },
+    {
+        "id": "88769e29.d20008",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Balcony",
+        "topic": "Balcony",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 139.75,
+        "y": 300.0000305175781,
+        "wires": [
+            [
+                "502b71cb.5ed108"
+            ]
+        ]
+    },
+    {
+        "id": "70875cca.b1dea4",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Front Door",
+        "topic": "Front Door",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 149.75,
+        "y": 380.0000305175781,
+        "wires": [
+            [
+                "e1bd0ce0.0bcc78"
+            ]
+        ]
+    },
+    {
+        "id": "f220bc2a.b966a8",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Web GUI",
+        "info": "",
+        "x": 809.7500610351562,
+        "y": 216.75003051757812,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "e7a78db3.6f902",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Buttons",
+        "info": "",
+        "x": 93.75,
+        "y": 220.00003051757812,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "220f4c8e.703754",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set device",
+        "func": "var devices = flow.get('schedule');\nmsg.device=devices[msg.topic].id; // get device number\nflow.set(msg.topic.replace(' ','_'), msg.payload); // Save device state\nmsg.method = msg.payload;         // Set method in msg\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1120.75,
+        "y": 378.0000305175781,
+        "wires": [
+            [
+                "9faec8c0.92a8a",
+                "c5ac7f6e.a84c"
+            ]
+        ]
+    },
+    {
+        "id": "9faec8c0.92a8a",
+        "type": "debug",
+        "z": "4b9502df.05cf0c",
+        "name": "Actions",
+        "active": true,
+        "console": "false",
+        "complete": "true",
+        "x": 1325,
+        "y": 440.7500305175781,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "3594c1ff.e754de",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Check front_door state",
+        "func": "var m = flow.get(\"Front_Door\")||\"turnoff\"; // Get light state\nvar s = flow.get(\"day_state\")||0;          // Get day state\nif (s==\"0\"||m==\"turnon\")                   // if day or lights turned on. do nothing\n return null;\nreturn {\"topic\":\"Front Door\"};             // Turn on front door light",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 470,
+        "y": 620,
+        "wires": [
+            [
+                "cf38103a.5861f8"
+            ]
+        ]
+    },
+    {
+        "id": "366d6369.eb8f2c",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set sunevent",
+        "func": "flow.set(\"sunevent\",msg.payload);\nnode.log('sunevent: '+msg.payload)\nif (msg.payload == 'dusk') {\n  node.log('set day_state: 1')\n  flow.set('day_state', 1)\n} else if(msg.payload=='dawn') {\n  node.log('set day_state: 0')\n  flow.set('day_state', 0)\n}\n",
+        "outputs": "1",
+        "noerr": 0,
+        "x": 380,
+        "y": 1260,
+        "wires": [
+            [
+
+            ]
+        ]
+    },
+    {
+        "id": "27fe292.3d4c7d6",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 1",
+        "topic": "Adapter 1",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 140.75,
+        "y": 420.0000305175781,
+        "wires": [
+            [
+                "6c6d9b03.3cf7e4"
+            ]
+        ]
+    },
+    {
+        "id": "e687407.5e4004",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Lights on/off at dusk/dawn",
+        "info": "",
+        "x": 148.25003051757812,
+        "y": 1220.25,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "a4d1b0b2.277e48",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Test new sensors",
+        "info": "",
+        "x": 125,
+        "y": 751,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "94dc1f0f.af15c",
+        "type": "tellstick-in",
+        "z": "4b9502df.05cf0c",
+        "name": "test",
+        "inputconfig": "",
+        "x": 135,
+        "y": 791,
+        "wires": [
+            [
+                "c6ec2e11.45f67"
+            ]
+        ]
+    },
+    {
+        "id": "c6ec2e11.45f67",
+        "type": "debug",
+        "z": "4b9502df.05cf0c",
+        "name": "Sensors",
+        "active": true,
+        "console": "false",
+        "complete": "true",
+        "x": 440,
+        "y": 791,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "bc31a761.d9cb38",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 3",
+        "topic": "Adapter 3",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 140.75,
+        "y": 500.0000305175781,
+        "wires": [
+            [
+                "f0bd3487.7122a8"
+            ]
+        ]
+    },
+    {
+        "id": "fcd7cfa2.b9fc68",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 2",
+        "topic": "Adapter 2",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "x": 140.75,
+        "y": 460.0000305175781,
+        "wires": [
+            [
+                "dcf2bed7.1b4d8"
+            ]
+        ]
+    },
+    {
+        "id": "704879e9.6e671",
+        "type": "sun events",
+        "z": "4b9502df.05cf0c",
+        "testmode": false,
+        "verbose": false,
+        "topic": "",
+        "name": "",
+        "x": 138.25003051757812,
+        "y": 1260.25,
+        "wires": [
+            [
+                "366d6369.eb8f2c"
+            ]
+        ]
+    },
+    {
+        "id": "c5ebee1c.91ae3",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Living Room Switch",
+        "label": "Living Room",
+        "group": "42b03dc8.e1d8ac",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Living Room",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 840,
+        "y": 340,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "7b4107f.68889f8",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Diner Switch",
+        "label": "Diner",
+        "group": "e213494b.c9bba8",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Diner",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 817.75,
+        "y": 259.0000305175781,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "5182cd9c.6d98f4",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Balcony Switch",
+        "label": "Balcony",
+        "group": "61bd4196.686dc",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Balcony",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 820.75,
+        "y": 300.0000305175781,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "8c88deac.6a91a",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Front Door Switch",
+        "label": "Front Door",
+        "group": "970f446a.26b978",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Front Door",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 831,
+        "y": 380,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "63bfbd3e.d0555c",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 1 Switch",
+        "label": "Adapter 1",
+        "group": "d4267efb.fb59d",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Adapter 1",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 827.75,
+        "y": 424.0000305175781,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "ca643dbf.0bcf28",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 2 Switch",
+        "label": "Adapter 2",
+        "group": "1309f17e.928837",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Adapter 2",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 824.75,
+        "y": 462.0000305175781,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "c976cf88.4c1f5",
+        "type": "ui_switch",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 3 Switch",
+        "label": "Adapter 3",
+        "group": "cf097b6e.f7cc",
+        "order": 1,
+        "width": "5",
+        "height": "1",
+        "passthru": true,
+        "decouple": "false",
+        "topic": "Adapter 3",
+        "onvalue": "turnon",
+        "onvalueType": "str",
+        "onicon": "lightbulb_outline",
+        "oncolor": "orange",
+        "offvalue": "turnoff",
+        "offvalueType": "str",
+        "officon": "lightbulb_outline",
+        "offcolor": "black",
+        "x": 825.75,
+        "y": 504.0000305175781,
+        "wires": [
+            [
+                "220f4c8e.703754"
+            ]
+        ]
+    },
+    {
+        "id": "9ebd26b3.af149",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 386,
+        "y": 340,
+        "wires": [
+            [
+                "c5ebee1c.91ae3"
+            ]
+        ]
+    },
+    {
+        "id": "97dd1d30.cd2a38",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 389.75,
+        "y": 260.0000305175781,
+        "wires": [
+            [
+                "7b4107f.68889f8"
+            ]
+        ]
+    },
+    {
+        "id": "502b71cb.5ed108",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 390.75,
+        "y": 300.0000305175781,
+        "wires": [
+            [
+                "5182cd9c.6d98f4"
+            ]
+        ]
+    },
+    {
+        "id": "e1bd0ce0.0bcc78",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 388.75,
+        "y": 380.0000305175781,
+        "wires": [
+            [
+                "8c88deac.6a91a"
+            ]
+        ]
+    },
+    {
+        "id": "6c6d9b03.3cf7e4",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 387.75,
+        "y": 420.0000305175781,
+        "wires": [
+            [
+                "63bfbd3e.d0555c"
+            ]
+        ]
+    },
+    {
+        "id": "dcf2bed7.1b4d8",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 389.75,
+        "y": 460.0000305175781,
+        "wires": [
+            [
+                "ca643dbf.0bcf28"
+            ]
+        ]
+    },
+    {
+        "id": "f0bd3487.7122a8",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Set method",
+        "func": "var m = flow.get(msg.topic.replace(' ','_'))||\"turnoff\"; // Get light state\nmsg.payload = m=='turnoff'?'turnon':'turnoff';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 386.75,
+        "y": 500.0000305175781,
+        "wires": [
+            [
+                "c976cf88.4c1f5"
+            ]
+        ]
+    },
+    {
+        "id": "889fbf4d.a19d4",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Initialize",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "x": 139.5,
+        "y": 45.750030517578125,
+        "wires": [
+            [
+                "20c6beb8.635862"
+            ]
+        ]
+    },
+    {
+        "id": "64265282.4f3b6c",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Get installed Devices",
+        "func": "/*****************************************************************************\n * tellstick.conf parser\n *\n * Simple state machine that parses the tellstick.conf file as specified\n *   http://developer.telldus.com/wiki/TellStick_conf\n *\n * The file /etc/tellstick.conf is the file where all devices used by\n * TellStick is configured under Linux. Each device is configured in its own\n * block with the parameter as name/value-pairs:\n * \n *     device {\n *       foo = \"bar\"\n *     }\n * \n * A device has at least four values and another block names parameters.\n * A typical device can look like this:\n * \n *     device {\n *       id = 1\n *       name = \"Device 1\"\n *       protocol = \"arctech\"\n *       model = \"codeswitch\"\n *       parameters {\n *         house = \"A\"\n *         unit = \"1\"\n *       }\n *     }\n * \n * id\n *     This is a number and must be unique for each device. \n * \n * name\n *     A name for easy identification of the device. \n * \n * protocol\n *     This is the protocol the device uses. More on the different protocols\n *     in the referenced link  \n * \n * model\n *     The parameter model is only used by some protocols where there exists\n *     different types of devices using the same protocol. This can be dimmers\n *     versus non-dimmers, codeswitch versus selflearning etc. If the devices\n *     are configured from TelldusCenter, this string will also be followed by\n *     a brand name, to allow for TelldusCenter to show the correct device\n *     brand. E.g., the string will be appended by: \":proove\". \n * \n * parameters\n *    This block depends on the protocol specified and is explained under\n *    each protocol. \n ****************************************************************************/\n \nconst IDLE = 0;\nconst DEVICE = 1;\nconst PARAMETER = 2;\n\nvar devices = {};\nvar state = IDLE;\n\nvar lines = msg.payload.split('\\n');                              // Seperate lines\nfor (var i = 0, l = lines.length; i < l; i++) {\n  var line = lines[i].trim();                                     // Remove whitespace\n  if (line.startsWith('#')) continue;                             // skip comments\n\n    // State Machine\n    if (!state && line.startsWith('device {')) {                  // Start of device block\n      state++;                                                    // State = DEVICE\n      var dev = {};                                               // Create new device\n      continue;\n    } else if (state && line.startsWith('parameters {')) {        // Start of parameters block\n      state++;                                                    // State = PARAMETER \n      continue;\n    } else if (state && line.startsWith('}')) {                   // End of block\n      state--;                                                    // Change state\n      if (state === IDLE)                                         // End of device block\n        devices[dev.name] = dev;                                  // Save device data\n      continue;\n    }\n    if (state === DEVICE) {                                       // Read device block only\n      var param = line.split('=');                                // name = value \n      dev[param[0].trim()] = param[1].replace(/\"/g, '').trim();   // Save device data\n    }\n}\n\nflow.set('devices', devices);                                   // Save devices\nflow.set('device', Object.keys(devices)[0]);                    // Set default device\n\n// Send it to the next node\nmsg.payload = '';\nreturn msg\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 529.5,
+        "y": 45.750030517578125,
+        "wires": [
+            [
+                "be910020.af35c8",
+                "70bac2e8.8cf38c"
+            ]
+        ]
+    },
+    {
+        "id": "7070f1b7.02278",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Living Room Schedule",
+        "group": "42b03dc8.e1d8ac",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Living Room",
+        "x": 846,
+        "y": 626,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "6f12649.fede09c",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Diner Schedule",
+        "group": "e213494b.c9bba8",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Diner",
+        "x": 826,
+        "y": 662,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "d24f7934.38fbc8",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Balcony Schedule",
+        "group": "61bd4196.686dc",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Balcony",
+        "x": 825,
+        "y": 699,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "e41ebc5a.068ad",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Front Door Schedule",
+        "group": "970f446a.26b978",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Front Door",
+        "x": 835.5,
+        "y": 736.7500305175781,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "701a55d6.a138ac",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 1 Schedule",
+        "group": "d4267efb.fb59d",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Adapter 1",
+        "x": 836.5,
+        "y": 771.7500305175781,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "3c2c74f2.96217c",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 2 Schedule",
+        "group": "1309f17e.928837",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Adapter 2",
+        "x": 836.5,
+        "y": 807.7500305175781,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "b7871180.3084d",
+        "type": "ui_button",
+        "z": "4b9502df.05cf0c",
+        "name": "Adapter 3 Schedule",
+        "group": "cf097b6e.f7cc",
+        "order": 2,
+        "width": "1",
+        "height": "1",
+        "passthru": false,
+        "label": "",
+        "color": "black",
+        "bgcolor": "",
+        "icon": "today",
+        "payload": "Scheduler",
+        "payloadType": "str",
+        "topic": "Adapter 3",
+        "x": 838.5,
+        "y": 844.7500305175781,
+        "wires": [
+            [
+                "f337e86a.a7b61"
+            ]
+        ]
+    },
+    {
+        "id": "f337e86a.a7b61",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Save device",
+        "func": "flow.set('device', msg.topic)\nlet now = new Date();\nflow.set('selector', now.getHours())\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 1105.5,
+        "y": 735.7500305175781,
+        "wires": [
+            [
+                "4b3423b9.e4e894"
+            ]
+        ]
+    },
+    {
+        "id": "79c2cca6.ad5964",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "Every minute",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "",
+        "x": 170.25,
+        "y": 152.75009155273438,
+        "wires": [
+            [
+                "4ab3ceef.2c7b7"
+            ]
+        ]
+    },
+    {
+        "id": "4ab3ceef.2c7b7",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Process Schedule",
+        "func": "let schedule = flow.get(\"schedule\");                // Get scheduled actions\nlet sunevent = flow.get(\"sunevent\");                // Get current sunevent\n\nconst sunevents = [\"\",\"nauticalDawn\",\"dawn\",\"nadir\",\"sunrise\",\"sunriseEnd\",\n                   \"goldenHourEnd\",\"solarNoon\",\"goldenHour\",\"sunsetStart\",\n                   \"sunset\",\"dusk\",\"nauticalDusk\",\"night\",\"nightEnd\"]\n\nconst sun_on = 169\nconst sun_off = 176\n\nlet now = new Date(); // Get current date & time\nlet day = now.getDay();\nlet hour = (day * 24) + now.getHours();      // Get index into schedule\nlet mins = now.getMinutes();                          // Get minute\nlet msgs = new Array(Object.keys(schedule).length).fill(null); // Initialize list of msg to return\nfor (let dev in schedule) {                            // For each device\n  let msg = {};\n  devId = schedule[dev].id-1                        // Get device id\n  if (schedule[dev][sun_on] && schedule[dev].day[sun_off+day]) {\n    if (sunevent === sunevents[schedule[dev].day[sun_on+day]]) {\n      msg.payload = 'turnon'\n    }\n    if (sunevent === sunevents[schedule[dev].day[sun_off+day]]) {\n      msg.payload = 'turnoff'\n    }\n  } else {\n    let action = schedule[dev].day[hour];                   // Get action\n    let prev = schedule[dev].day[((hour - 1) + 168) % 168]; // Get previous action (wrap around index)\n    let next = schedule[dev].day[(hour + 1) % 168];         // Get next action (wrap around index)\n\n    switch (action) {\n      // Check for new action at the beginning of the hour ie minute = 0\n      case 0:\n        // Turn off device, but only if it was on before (based on schedule)\n        if (mins === 0 && prev)\n          msg.payload = 'turnoff';\n        break;\n      case 1:\n        // Turn on device, but only if it was off before (based on schedule)\n        if (mins === 0 && !prev)\n          msg.payload = 'turnon';\n        break;\n      case 2:\n        // Check if a random time needs to be set\n        if (mins === 0) {\n          if (!prev) {\n            // First random timing => value between 1 - 29\n            schedule[dev].random = Math.floor(Math.random() * 30 + 1); \n          } else if (!next) {\n            // Last random timing => value between 31 - 59\n            schedule[dev].random = Math.floor(Math.random() * 30 + 31);\n          } else {\n            // Make sure to skip random time handling when both prev AND next action is set\n            schedule[dev].random = 0;  \n          }\n          node.log('RANDOM TIME: ' + schedule[dev].random);\n          flow.set(\"schedule\", schedule);\n        }\n        if (schedule[dev].random) { // Handle any random time set\n          rnd = --schedule[dev].random; // Decrease random value\n          if (!rnd) {\n            // Turn on or off device when random time expired\n            msg.payload = prev ? 'turnoff' : 'turnon';\n          }\n        }\n    }\n  }\n  if (msg.payload)\n    msgs[devId] = msg; // push msg for device\n}\nif (msg.payload)\n  node.log(msgs);\nreturn msgs; // send actions\n",
+        "outputs": "8",
+        "noerr": 0,
+        "x": 414,
+        "y": 152.50009155273438,
+        "wires": [
+            [
+                "7b4107f.68889f8"
+            ],
+            [
+                "5182cd9c.6d98f4"
+            ],
+            [
+                "c5ebee1c.91ae3"
+            ],
+            [
+                "8c88deac.6a91a"
+            ],
+            [
+
+            ],
+            [
+                "63bfbd3e.d0555c"
+            ],
+            [
+                "ca643dbf.0bcf28"
+            ],
+            [
+                "c976cf88.4c1f5"
+            ]
+        ],
+        "outputLabels": [
+            "",
+            "",
+            "",
+            "",
+            "bell",
+            "",
+            "",
+            ""
+        ]
+    },
+    {
+        "id": "df257d0d.0e6928",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Perform Scheduled Action",
+        "info": "",
+        "x": 155.25,
+        "y": 111.75009155273438,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "20c6beb8.635862",
+        "type": "file in",
+        "z": "4b9502df.05cf0c",
+        "name": "Read conf",
+        "filename": "/etc/tellstick.conf",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "x": 315.5,
+        "y": 45.750030517578125,
+        "wires": [
+            [
+                "64265282.4f3b6c"
+            ]
+        ]
+    },
+    {
+        "id": "be910020.af35c8",
+        "type": "debug",
+        "z": "4b9502df.05cf0c",
+        "name": "Devices",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "x": 741.0556640625,
+        "y": 45.527809143066406,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "4b3423b9.e4e894",
+        "type": "ui_ui_control",
+        "z": "4b9502df.05cf0c",
+        "name": "Jump to scheduler",
+        "x": 1307,
+        "y": 736,
+        "wires": [
+            [
+
+            ]
+        ]
+    },
+    {
+        "id": "70bac2e8.8cf38c",
+        "type": "link out",
+        "z": "4b9502df.05cf0c",
+        "name": "Devices",
+        "links": [
+            "cec7b4bb.2aa3a8"
+        ],
+        "x": 740,
+        "y": 100,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "f5e75c07.b753b8",
+        "type": "ui_template",
+        "z": "4b9502df.05cf0c",
+        "group": "2b8bbb87.6d1fd4",
+        "name": "css etc",
+        "order": 1,
+        "width": "0",
+        "height": "0",
+        "format": "<style>\n.filled { height: 48px !important;padding: 0 !important; margin: 0 !important;}\n.nr-dashboard-template { padding: 0; margin: 0;}\n.rounded { border-radius: 12px 12px 12px 12px;}\n.bigfont { font-size: 18px;}\n.smallfont { font-size: 12px;}\n.thedays { cursor:pointer; vertical-align:bottom; height:48px; }\n.the2px { background-color: #000000; height:2px; }\n.theblocks {width:100%; height:0%; background-color:#000000; }\n.greybuttons { background-color:#000000 !important; width:48px; border: none;}\n.theaction { cursor:pointer; font:8px consolas,DejaVu Sans Mono,Bitstream Vera Sans Mono,monospace; color:#000000 !important; }\n.smallheadings { font-size:80%; }\n\n</style>\n\n<script>\nvar current=1;\n\n$('.vibrate').on('click', function() {\n navigator.vibrate(100);\n});\n\nfunction restore_bg(x) {\n $(this).css(\"background-color\", x);\n };\n\n$('.touched').on('mousedown', function() {\n \n var x= $(this).css(\"background-color\");\n $(this).css(\"background-color\", \"yellow\");\n \n setTimeout(restore_bg.bind(this,x),50);\n navigator.vibrate(80);\n });\n \n</script>",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 160,
+        "y": 920,
+        "wires": [
+            [
+
+            ]
+        ]
+    },
+    {
+        "id": "36b4e3bc.1b6054",
+        "type": "inject",
+        "z": "4b9502df.05cf0c",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "1",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "",
+        "x": 150,
+        "y": 1120,
+        "wires": [
+            [
+                "42e96f12.7fab38"
+            ]
+        ]
+    },
+    {
+        "id": "4dff8616.c2dd28",
+        "type": "ui_text",
+        "z": "4b9502df.05cf0c",
+        "group": "2b8bbb87.6d1fd4",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "",
+        "label": "",
+        "format": "{{msg.payload}}",
+        "layout": "col-center",
+        "x": 544,
+        "y": 1120,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "336d205c.105f18",
+        "type": "ui_template",
+        "z": "4b9502df.05cf0c",
+        "group": "2b8bbb87.6d1fd4",
+        "name": "scheduler page",
+        "order": 3,
+        "width": "0",
+        "height": "0",
+        "format": "<script>\n  var Actions = [['Off','25%','#b30101'],  // Off settings\n                 ['On','50%','#118b45'],  // On settings\n                 ['Rnd','50%','#FFBF00']]; // Random settings\n  var Days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\n  var sunevents = [\"\",\"nauticalDawn\",\"dawn\",\"nadir\",\"sunrise\",\"sunriseEnd\",\n                   \"goldenHourEnd\",\"solarNoon\",\"goldenHour\",\"sunsetStart\",\n                   \"sunset\",\"dusk\",\"nauticalDusk\",\"night\",\"nightEnd\"];\n  var staColor = ['#0080FF','#000000'];\n  \n  var last_selector = 24;\n  var schedView = 0;\n  var view_icon = ['wb_sunny','schedule'];\n  var view_id = ['schedule','sunevent'];\n   \n  function feedback(text) {\n    $(\"#info\").text(text);\n    var tm=setTimeout(function(){ $(\"#info\").text(\"Ok\"); clearTimeout(tm);}, 5000);\n  }\n\n  function drawAction(id, day, schedule) {\n    let action = schedule[day*24+id];                       // get scheduled Action\n    //console.log('Action: '+action)\n    $(\"#v\"+id).text(Actions[action][0]);                    // Set Action text\n    $(\"#t\"+id).height(Actions[action][1]);                  // Set box height\n    $(\"#t\"+id).css('background-color', Actions[action][2]); // Set box color\n  }\n  \n  (function(scope){\n    scope.send({payload: ''})              // Refresh screen\n    scope.viewIcon = view_icon[schedView];\n    scope.$watch('msg', function(msg) {\n      if (msg) { \n        //console.log('SCOPE draw')\n        //console.log('msg: '+msg.payload)\n        // Indicate last selected field\n        $(\"#td\"+last_selector).css('background-color',last_selector<24?staColor[1]:'transparent');\n        $(\"#td\"+msg.selector).css('background-color',staColor[0]);  \n        last_selector=msg.selector;\n        // Set actions\n        let day = Days.indexOf(msg.day);\n        //if (msg.redraw) {\n          for (let x=0; x<24; x++) { drawAction(x, day, msg.schedule) }\n        //} else if (msg.selector<24) { drawAction(msg.selector, day, msg.schedule) }\n    \n        scope.device = msg.device;                         // Set device\n        scope.day = msg.day;                               // Set day\n        scope.sunon = sunevents[msg.schedule[169]];        // Set Sun On Event\n        scope.sunoff = sunevents[msg.schedule[170]];       // Set Sun Off Event\n      \n        if (msg.status) { feedback(msg.status); }\n      }\n    });\n    \n    scope.toggleView = function() {\n      let nView = (schedView+1)%2;\n      scope.viewIcon = view_icon[nView]; // TODO: find a way to make this work\n      e = document.getElementById(view_id[schedView]);\n      e.style.display = 'none';\n      e = document.getElementById(view_id[nView]);\n      e.style.display = '';\n      schedView = nView\n    }\n  })(scope);\n</script>\n\n<table style=\"width:100%\">\n  <tbody class=\"header\" id=\"header\">\n    <tr>\n      <td colspan=3><span>Device</span></td>\n      <td colspan=5 ng-click=\"send({payload: '24'})\" id=\"{{ 'td24' }}\">\n        <span id=\"{{ 'v24' }}\" style=\"font-size:120%\">{{ device }}</span>\n      </td>\n      <td colspan=2 rowspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"selectDate()\"> \n          <ng-md-icon id=\"view\" style=\"color: #fff;\" icon=\"date_range\"></ng-md-icon>\n        </button> \n      </td>\n      <td colspan=2 rowspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"toggleView()\"> \n          <ng-md-icon id=\"view\" style=\"color: #fff;\" icon=\"{{ viewIcon }}\"></ng-md-icon>\n        </button> \n      </td>\n    </tr>\n    <tr>\n      <td colspan=3><span>Day</span></td>\n      <td colspan=5 ng-click=\"send({payload: '25'})\" id=\"{{ 'td25' }}\">\n        <span id=\"v25\" style=\"cursor:pointer;font-size:120%;width:100%\">{{ day }}</span>\n      </td>\n    </tr>\n    <tr style=\"height:2px\">\n      <td colspan=12 style=\"background-color:#9E9E9E;height:2px;\"></td> \n    </tr>\n  </tbody>\n  <tbody id=\"schedule\">\n    <tr>\n      <td ng-click=\"send({payload: '0'})\" class=\"thedays\"><span id=\"{{ 'v0' }}\" class=\"theaction\"></span><div id=\"{{ 't0' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '1'})\" class=\"thedays\"><span id=\"{{ 'v1' }}\" class=\"theaction\"></span><div id=\"{{ 't1' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '2'})\" class=\"thedays\"><span id=\"{{ 'v2' }}\" class=\"theaction\"></span><div id=\"{{ 't2' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '3'})\" class=\"thedays\"><span id=\"{{ 'v3' }}\" class=\"theaction\"></span><div id=\"{{ 't3' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '4'})\" class=\"thedays\"><span id=\"{{ 'v4' }}\" class=\"theaction\"></span><div id=\"{{ 't4' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '5'})\" class=\"thedays\"><span id=\"{{ 'v5' }}\" class=\"theaction\"></span><div id=\"{{ 't5' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '6'})\" class=\"thedays\"><span id=\"{{ 'v6' }}\" class=\"theaction\"></span><div id=\"{{ 't6' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '7'})\" class=\"thedays\"><span id=\"{{ 'v7' }}\" class=\"theaction\"></span><div id=\"{{ 't7' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '8'})\" class=\"thedays\"><span id=\"{{ 'v8' }}\" class=\"theaction\"></span><div id=\"{{ 't8' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '9'})\" class=\"thedays\"><span id=\"{{ 'v9' }}\" class=\"theaction\"></span><div id=\"{{ 't9' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '10'})\" class=\"thedays\"><span id=\"{{ 'v10' }}\" class=\"theaction\"></span><div id=\"{{ 't10' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '11'})\" class=\"thedays\"><span id=\"{{ 'v11' }}\" class=\"theaction\"></span><div id=\"{{ 't11' }}\" class=\"theblocks\"></div></td>\n    </tr> \n    <tr style=\"height:2px\">\n      <td id=\"{{ 'td0' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td1' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td2' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td3' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td4' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td5' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td6' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td7' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td8' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td9' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td10' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td11' }}\" class=\"the2px\"></td>\n    </tr> \n    <tr>\n      <td align=\"center\">0</td>\n      <td align=\"center\">1</td>\n      <td align=\"center\">2</td>\n      <td align=\"center\">3</td>\n      <td align=\"center\">4</td>\n      <td align=\"center\">5</td>\n      <td align=\"center\">6</td>\n      <td align=\"center\">7</td>\n      <td align=\"center\">8</td>\n      <td align=\"center\">9</td>\n      <td align=\"center\">10</td>\n      <td align=\"center\">11</td>\n    </tr> \n    <tr>\n      <td ng-click=\"send({payload: '12'})\" class=\"thedays\"><span id=\"{{ 'v12' }}\" class=\"theaction\"></span><div id=\"{{ 't12' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '13'})\" class=\"thedays\"><span id=\"{{ 'v13' }}\" class=\"theaction\"></span><div id=\"{{ 't13' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '14'})\" class=\"thedays\"><span id=\"{{ 'v14' }}\" class=\"theaction\"></span><div id=\"{{ 't14' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '15'})\" class=\"thedays\"><span id=\"{{ 'v15' }}\" class=\"theaction\"></span><div id=\"{{ 't15' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '16'})\" class=\"thedays\"><span id=\"{{ 'v16' }}\" class=\"theaction\"></span><div id=\"{{ 't16' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '17'})\" class=\"thedays\"><span id=\"{{ 'v17' }}\" class=\"theaction\"></span><div id=\"{{ 't17' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '18'})\" class=\"thedays\"><span id=\"{{ 'v18' }}\" class=\"theaction\"></span><div id=\"{{ 't18' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '19'})\" class=\"thedays\"><span id=\"{{ 'v19' }}\" class=\"theaction\"></span><div id=\"{{ 't19' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '20'})\" class=\"thedays\"><span id=\"{{ 'v20' }}\" class=\"theaction\"></span><div id=\"{{ 't20' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '21'})\" class=\"thedays\"><span id=\"{{ 'v21' }}\" class=\"theaction\"></span><div id=\"{{ 't21' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '22'})\" class=\"thedays\"><span id=\"{{ 'v22' }}\" class=\"theaction\"></span><div id=\"{{ 't22' }}\" class=\"theblocks\"></div></td>\n      <td ng-click=\"send({payload: '23'})\" class=\"thedays\"><span id=\"{{ 'v23' }}\" class=\"theaction\"></span><div id=\"{{ 't23' }}\" class=\"theblocks\"></div></td>\n    </tr> \n    <tr style=\"height:2px\">\n      <td id=\"{{ 'td12' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td13' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td14' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td15' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td16' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td17' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td18' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td19' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td20' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td21' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td21' }}\" class=\"the2px\"></td>\n      <td id=\"{{ 'td23' }}\" class=\"the2px\"></td>\n    </tr> \n    <tr>\n      <td align=\"center\">12</td>\n      <td align=\"center\">13</td>\n      <td align=\"center\">14</td>\n      <td align=\"center\">15</td>\n      <td align=\"center\">16</td>\n      <td align=\"center\">17</td>\n      <td align=\"center\">18</td>\n      <td align=\"center\">19</td>\n      <td align=\"center\">20</td>\n      <td align=\"center\">21</td>\n      <td align=\"center\">22</td>\n      <td align=\"center\">23</td>\n    </tr> \n  </tbody>\n  <tbody id=\"sunevent\" style=\"display:none\">\n    <tr class=\"thedays\"><td colspan=12>&nbsp;</td></tr>\n    <tr>\n      <td colspan=4>Lights on at:</td>\n      <td ng-click=\"send({payload: '26'})\" colspan=8 id=\"{{ 'td26' }}\" style=\"height:25px;\">\n        <span id=\"{{ 'v26' }}\" style=\"cursor:pointer;font-size:120%;width:100%;\">{{ sunon }}</span>\n      </td>\n    </tr>\n    <tr style=\"height:2px\"></tr>\n    <tr style=\"height:2px\"></tr>\n    <tr>\n      <td colspan=4>Lights off at:</td>\n      <td ng-click=\"send({payload: '27'})\" colspan=8 id=\"{{ 'td27' }}\" style=\"height:25px;\">\n        <span id=\"{{ 'v27' }}\" style=\"cursor:pointer;font-size:120%;width:100%;\">{{ sunoff }}</span>\n      </td>\n    </tr>\n    <tr class=\"thedays\"><td colspan=12>&nbsp;</td></tr>\n  </tbody>\n  <tbody class=\"footer\">\n    <tr height=\"5px\"><td colspan=\"12\"></td></tr>\n    <tr height=\"20px\">\n      <td colspan=2 class=\"smallheadings\">Status:</td>\n      <td colspan=10 ><center><span id=\"{{ 'info' }}\" class=\"smallheadings\" ></span></center></td>\n    </tr>\n    <tr height=\"5px\"><td colspan=\"12\"></td></tr>\n    <tr>\n      <td style=\"width:24px\">&nbsp;</td>\n      <td colspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"send({payload: 'd'})\"> \n          <ng-md-icon style=\"color: #fff;\" icon=\"keyboard_arrow_down\"></ng-md-icon>\n          <md-tooltip md-direction=\"bottom\">SELECT PREVIOUS</md-tooltip>\n        </button> \n      </td>\n      <td colspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"send({payload: 'u'})\"> \n          <ng-md-icon style=\"color: #fff;\" icon=\"keyboard_arrow_up\"></ng-md-icon>\n          <md-tooltip md-direction=\"bottom\">SELECT NEXT</md-tooltip>\n        </button> \n      </td>\n      <td colspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"send({payload: 'c'})\"> \n          <ng-md-icon style=\"color: #fff;\" icon=\"content_copy\">\n          <md-tooltip md-direction=\"bottom\">COPY</md-tooltip>\n        </ng-md-icon>\n      </button> \n      </td>\n      <td colspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"send({payload: 's'})\"> \n          <ng-md-icon style=\"color: #fff;\" icon=\"save\">\n          <md-tooltip md-direction=\"bottom\">SAVE</md-tooltip>\n        </ng-md-icon>\n      </button> \n      </td>\n      <td colspan=2 style=\"text-align:center\">\n        <button class=\"vibrate filled touched smallfont rounded greybuttons\" ng-click=\"send({payload: 'q'})\"> \n          <ng-md-icon style=\"color: #fff;\" icon=\"undo\">\n          <md-tooltip md-direction=\"bottom\">CANCEL</md-tooltip>\n        </ng-md-icon>\n      </button> \n      </td>\n      <td style=\"width:24px\">&nbsp;</td>\n    </tr>\n  </tbody>\n</table>\n",
+        "storeOutMessages": false,
+        "fwdInMessages": true,
+        "templateScope": "local",
+        "x": 190,
+        "y": 956,
+        "wires": [
+            [
+                "f887dac4.5b405"
+            ]
+        ]
+    },
+    {
+        "id": "f887dac4.5b405",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Process controls",
+        "func": "// Constants\nconst debug=false\nconst Actions = ['Off', 'On', 'Random']\nconst Days = [\"Sunday\", \"Monday\", \"Tuesday\", \"Wednesday\", \"Thursday\", \"Friday\", \"Saturday\"];\nconst selected = ['Device', 'Day','Sun ON event','Sun OFF event'];\nconst sunevents = [\"\",\"nauticalDawn\",\"dawn\",\"nadir\",\"sunrise\",\"sunriseEnd\",\n                   \"goldenHourEnd\",\"solarNoon\",\"goldenHour\",\"sunsetStart\",\n                   \"sunset\",\"dusk\",\"nauticalDusk\",\"night\",\"nightEnd\"]\n\nfunction findDevice(devs, id){\n    for (let dev in devs) {\n        if (devs[dev].id-1 == id)\n            return dev;\n    }\n    return undefined;\n}\n\n// Get saved data\nlet schedule = flow.get('schedule');\nlet dev = flow.get('device');\nlet devId = schedule[dev].id-1;\n\nlet now = new Date();\nlet day = Number.isInteger(flow.get('day'))?flow.get('day'):now.getDay();\nlet selector = Number.isInteger(flow.get('selector'))?flow.get('selector'):now.getHours();\nlet hour = selector<24?(day*24)+selector:0;    // Get index into schedule\nlet action = schedule[dev].day[hour];\n\nlet sunon = schedule[dev].day[169+day];\nlet sunoff = schedule[dev].day[176+day];\n\nlet dLen = Object.keys(schedule).length;\nlet sLen = sunevents.length;\nlet aLen = Actions.length;\n\n// Handle requested action\nlet payload = msg.payload\nif (typeof payload === 'undefined') return\n\nmsg = {}\nsave = false\nswitch (payload) {\n  case '':\n    if (debug) node.log('Refresh page')\n    flow.set('day',day)\n    flow.set('selector',selector )\n    msg.redraw = true\n    break\n  case \"u\":\n    save = true\n    if ((selector < 24)) {\n      schedule[dev].day[hour] = (action+1)%aLen;        // Next Hour action \n      //msg.status = Actions[schedule[devId][hour]];\n    } else if (selector == 24) {\n      devId = (devId+1)%dLen;                         // Next Device\n      node.log('Next device: '+devId)\n      //msg.status = \"Next Device\"; \n    } else if (selector == 25) {\n      day = (day+1)%7;                                // Next Day\n      //msg.status = \"Next Day\"; \n    } else if (selector == 26) {\n      schedule[dev].day[169+day] = (sunon+1)%sLen;      // Next Sun ON Eevent\n      //msg.status = \"Next Sun Event\"; \n    } else if (selector == 27) {\n      schedule[dev].day[176+day] = (sunoff+1)%sLen;     // Next SUn OFF Event\n      //msg.status = \"Next Sun Event\";\n    }\n    break;\n  case \"d\":\n    save = true\n    if (selector < 24) {\n      schedule[dev].day[hour] = ((action-1)+aLen)%aLen; // Previous Hour action\n      //msg.status = Actions[schedule[devId][hour]];\n    } else if (selector == 24) {\n      devId = ((devId-1)+dLen)%dLen;                  // Previous Device\n      //msg.status = \"Previous Device\";\n    } else if (selector == 25) { \n      day = ((day-1)+7)%7;                            // Previous day\n      //msg.status = \"Previous day\"; \n    } else if (selector == 26) {\n      schedule[dev].day[169+day] = ((sunon-1)+sLen)%sLen;  // Previous Sun On Event\n      //msg.status = \"Previous Sun On Event\"; \n    } else if (selector == 27) {\n      schedule[dev].day[176+day] = ((sunoff-1)+sLen)%sLen; // Previous Sun Off Event\n      //msg.status = \"Previous Sun Off Event\";\n    }\n    break;\n  case 'c':\n    save = true\n    //node.log('Selector: '+selector)\n    if (selector < 24) {                            // Copy action to next hour\n      schedule[dev].day[(hour+1)%168] = schedule[dev].day[hour];\n      selector = (selector+1)%24;                   // Update selector        \n      if (!selector) day = (day+1)%7                // Update day if roillover \n      msg.status = \"Action copied to the next hour\";\n    } else if (selector == 25) {                    // Copy schedule to next day\n      for (let a = 0; a < 24; a++)\n        schedule[dev].day[((day+1)%7)*24+a] = schedule[dev].day[(day*24)+a];\n      day = (day + 1)%7;                           // Next day\n      msg.status = \"Schedule copied to\" + Days[day];\n    } else {\n      msg.status=\"Action not implemented\";\n    }\n    break;\n  case 's':\n    msg.payload = JSON.stringify(schedule);\n    node.send([null, msg, null]);                 // Save and continue\n    msg.payload = '';\n    msg.status = \"Saved Settings\";\n    break;\n  case 'q':\n    msg.payload = '';\n    msg.status = \"Changes canceled\";\n    return [null, null, msg];                     // Read old schedule\n  default:\n    //node.log('default: '+payload+' '+parseInt(payload))\n    selector = parseInt(payload);\n    flow.set('selector', selector)\n    if (selector < 24) {\n      msg.status = \"Changing Hour \" + selector;\n    } else {\n      msg.status = 'Changing ' + selected[selector-24];\n    }\n}\n\n// Save data if there was a payload\ndev = findDevice(schedule,devId);\nif (save) {\n  //node.warn('Saving data')\n  flow.set('schedule', schedule);\n  flow.set('device',dev);\n  flow.set('day', day);\n  flow.set('selector', selector)\n}\n\n// Send data to GUI\nmsg.schedule = schedule[dev].day;            // Just the current devices data\nmsg.day = Days[day]; //\nmsg.device = dev;\nmsg.selector = selector;\n\nif (debug) node.log('sending msg')\nif (debug) node.log('msg: '+JSON.stringify(msg))\n\nreturn [msg, null, null];\n\n\n",
+        "outputs": "3",
+        "noerr": 0,
+        "x": 420,
+        "y": 956,
+        "wires": [
+            [
+                "ce23084c.da8808"
+            ],
+            [
+                "9633e588.20d428"
+            ],
+            [
+                "fc27dc25.80c6c"
+            ]
+        ],
+        "inputLabels": [
+            "update request"
+        ],
+        "outputLabels": [
+            "Update page",
+            "Backup schedule",
+            "Restore schedule"
+        ]
+    },
+    {
+        "id": "9633e588.20d428",
+        "type": "file",
+        "z": "4b9502df.05cf0c",
+        "name": "backup",
+        "filename": "schedulers/on_off_scheduler.log",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "true",
+        "x": 1010,
+        "y": 955,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "fc27dc25.80c6c",
+        "type": "file in",
+        "z": "4b9502df.05cf0c",
+        "name": "Restore",
+        "filename": "schedulers/on_off_scheduler.log",
+        "format": "utf8",
+        "sendError": true,
+        "x": 630,
+        "y": 1040,
+        "wires": [
+            [
+                "a7e6ecfe.ea3a3"
+            ]
+        ]
+    },
+    {
+        "id": "a7e6ecfe.ea3a3",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Initialize schedule",
+        "func": "let devices = flow.get('devices');\nlet save = false;\nlet schedule = {};\n\nif (msg.hasOwnProperty('payload') && msg.payload!==\"\") {\n  // Get existing schedule\n  schedule = JSON.parse(msg.payload);\n  // Check for new devices\n  for (let dev in devices) {\n    if (!schedule.hasOwnProperty(dev)) {\n      save = true;                                  // Save new schedule\n      schedule[dev] = getDefault(devices[dev].id);  // Get empty schedule for new device\n    }\n  }\n  if (save) node.log('New devices added')\n} else {\n  // Create empty schedule for all devices\n  node.log('Create default schedule')\n  for (let dev in devices) {\n    schedule[dev] = getDefault(devices[dev].id);\n  }\n  save = true;\n}\n\nsMsg = null\n// Save schedule if changed\nif (save) {\n  node.log('saving schedule')\n  sMsg = {}\n  sMsg.payload = JSON.stringify(schedule);\n}\n\nflow.set('schedule',schedule);                      // Make schedule available\nmsg.payload=\"\";                                     // Refresh scheduler page\nnode.log('Restored schedule')\nreturn [sMsg,msg];\n\nfunction getDefault(id) {\n  return {'id':id,                                // Devices id\n          'date':[],                              // empty Date schedule\n          'day':Array(7*24 + 7*2).fill(0),        // empty day + sunevent schedule\n          'random':0                              // random time handling not active\n         }\n}\n \n\n",
+        "outputs": 2,
+        "noerr": 0,
+        "x": 810,
+        "y": 1040,
+        "wires": [
+            [
+                "9633e588.20d428"
+            ],
+            [
+                "6ecab8c5.5a9128"
+            ]
+        ]
+    },
+    {
+        "id": "95e9cfd2.af352",
+        "type": "link in",
+        "z": "4b9502df.05cf0c",
+        "name": "restoreSD",
+        "links": [
+            "6ecab8c5.5a9128"
+        ],
+        "x": 245,
+        "y": 1020,
+        "wires": [
+            [
+                "f887dac4.5b405"
+            ]
+        ]
+    },
+    {
+        "id": "6ecab8c5.5a9128",
+        "type": "link out",
+        "z": "4b9502df.05cf0c",
+        "name": "restoreSD",
+        "links": [
+            "95e9cfd2.af352"
+        ],
+        "x": 1005,
+        "y": 1046,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "ce23084c.da8808",
+        "type": "link out",
+        "z": "4b9502df.05cf0c",
+        "name": "updateGUI",
+        "links": [
+            "3a41a7a8.100d7"
+        ],
+        "x": 645,
+        "y": 917,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "3a41a7a8.100d7",
+        "type": "link in",
+        "z": "4b9502df.05cf0c",
+        "name": "updateGUI",
+        "links": [
+            "ce23084c.da8808"
+        ],
+        "x": 47.5,
+        "y": 956,
+        "wires": [
+            [
+                "336d205c.105f18"
+            ]
+        ]
+    },
+    {
+        "id": "42e96f12.7fab38",
+        "type": "function",
+        "z": "4b9502df.05cf0c",
+        "name": "Insert date",
+        "func": "msg.payload = new Date(msg.payload).toLocaleString();\nreturn msg",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 375,
+        "y": 1120,
+        "wires": [
+            [
+                "4dff8616.c2dd28"
+            ]
+        ]
+    },
+    {
+        "id": "99631600.2b533",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Scheduler GUI",
+        "info": "",
+        "x": 118,
+        "y": 868,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "cec7b4bb.2aa3a8",
+        "type": "link in",
+        "z": "4b9502df.05cf0c",
+        "name": "initialize",
+        "links": [
+            "70bac2e8.8cf38c"
+        ],
+        "x": 485,
+        "y": 1040,
+        "wires": [
+            [
+                "fc27dc25.80c6c"
+            ]
+        ]
+    },
+    {
+        "id": "3eff98b.0f9f5e8",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Time stamp",
+        "info": "",
+        "x": 101,
+        "y": 1066,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "2e005e5f.1a0ec2",
+        "type": "comment",
+        "z": "4b9502df.05cf0c",
+        "name": "Schedule buttons",
+        "info": "",
+        "x": 830,
+        "y": 580,
+        "wires": [
+
+        ]
+    },
+    {
+        "id": "e073b0fb.2dca3",
+        "type": "ui_date_picker",
+        "z": "4b9502df.05cf0c",
+        "name": "",
+        "label": "start",
+        "group": "2b8bbb87.6d1fd4",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "topic": "",
+        "x": 790,
+        "y": 1120,
+        "wires": [
+            [
+
+            ]
+        ]
+    },
+    {
+        "id": "68ccb0e6.67d78",
+        "type": "ui_date_picker",
+        "z": "4b9502df.05cf0c",
+        "name": "",
+        "label": "End",
+        "group": "2b8bbb87.6d1fd4",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "topic": "",
+        "x": 790,
+        "y": 1160,
+        "wires": [
+            [
+
+            ]
+        ]
+    },
+    {
+        "id": "715e8af7.08fcfc",
+        "type": "tellstick-input",
+        "z": "",
+        "name": "Motion sensor",
+        "deviceclass": "command",
+        "deviceprotocol": "arctech",
+        "devicegroup": "0",
+        "devicehouse": "20865426",
+        "devicemethod": "turnon",
+        "devicemodel": "selflearning",
+        "deviceunit": "10",
+        "devicecode": "",
+        "deviceid": ""
+    },
+    {
+        "id": "cee769f5.931bb8",
+        "type": "tellstick-input",
+        "z": "",
+        "name": "Door bell",
+        "deviceclass": "command",
+        "deviceprotocol": "arctech",
+        "devicegroup": "0",
+        "devicehouse": "8884355",
+        "devicemethod": "turnon",
+        "devicemodel": "selflearning",
+        "deviceunit": "9",
+        "devicecode": "",
+        "deviceid": ""
+    },
+    {
+        "id": "42b03dc8.e1d8ac",
+        "type": "ui_group",
+        "z": "",
+        "name": "Living Room",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "e213494b.c9bba8",
+        "type": "ui_group",
+        "z": "",
+        "name": "Diner",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "61bd4196.686dc",
+        "type": "ui_group",
+        "z": "",
+        "name": "Balcony",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "970f446a.26b978",
+        "type": "ui_group",
+        "z": "",
+        "name": "Front Door",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "d4267efb.fb59d",
+        "type": "ui_group",
+        "z": "",
+        "name": "Adapter 1",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "1309f17e.928837",
+        "type": "ui_group",
+        "z": "",
+        "name": "Adapter 2",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "cf097b6e.f7cc",
+        "type": "ui_group",
+        "z": "",
+        "name": "Adapter 3",
+        "tab": "fc142b5.691b3d8",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "2b8bbb87.6d1fd4",
+        "type": "ui_group",
+        "z": "4b9502df.05cf0c",
+        "name": "gui",
+        "tab": "34acd227.3ce33e",
+        "disp": false,
+        "width": "6",
+        "collapse": false
+    },
+    {
+        "id": "fc142b5.691b3d8",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Lights",
+        "icon": "lightbulb_outline"
+    },
+    {
+        "id": "34acd227.3ce33e",
+        "type": "ui_tab",
+        "z": "",
+        "name": "Scheduler",
+        "icon": "today"
+    }
+]

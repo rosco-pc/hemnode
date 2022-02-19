@@ -1,0 +1,238 @@
+<head>
+<script>
+  var Actions = [['Off','25%','#b30101'],  // Off settings
+                 ['On', '50%','#118b45'],  // On settings
+                 ['Rnd','50%','#FFBF00']]; // Random settings
+  var Days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var sunevents = ["","nauticalDawn","dawn","nadir","sunrise","sunriseEnd",
+                   "goldenHourEnd","solarNoon","goldenHour","sunsetStart",
+                   "sunset","dusk","nauticalDusk","night","nightEnd"];
+  var staColor = ['#0080FF','#000000'];
+  var view_icon = ['wb_sunny','schedule'];
+  var view_id = ['schedule','sunevent'];
+  var last_selector = 24;
+  
+  function feedback(text) {
+    $("#info").text(text);
+    var tm=setTimeout(function(){ $("#info").text("Ok"); clearTimeout(tm);}, 5000);
+  }
+
+  function drawAction(id, action) {
+    //console.log('Action: '+action)
+    $("#v"+id).text(Actions[action][0]);                    // Set Action text
+    $("#t"+id).height(Actions[action][1]);                  // Set box height
+    $("#t"+id).css('background-color', Actions[action][2]); // Set box color
+  }
+  
+  (function(scope){
+    console.log('Opening SCOPE');
+    scope.setAction('');              // Refresh screen
+    scope.schedView = 0;
+    scope.viewIcon = view_icon[scope.schedView];  // Set icon
+    scope.$watch('msg', function(msg) {
+      if (msg) { 
+        if (scope.last_selector != msg.selector) {
+          // reset indication of last selected field
+          $("#td"+last_selector).css('background-color',last_selector<24?staColor[1]:'transparent');
+          // Indicate current selected field
+          $("#td"+msg.selector).css('background-color',staColor[0]);  
+          last_selector=msg.selector;
+        }
+        // Draw current actions
+        let day = Days.indexOf(msg.day);
+        for (let x=0; x<24; x++) { drawAction(x, msg.schedule.day[day*24+x]) }
+
+        scope.device = msg.device;                              // Set device
+        scope.day = msg.day;                                    // Set day
+        scope.sunon = sunevents[msg.schedule.sunevent[day]];    // Set Sun On Event
+        scope.sunoff = sunevents[msg.schedule.sunevent[7+day]]; // Set Sun Off Event
+      
+        if (msg.status) { feedback(msg.status); }
+      }
+    });
+    
+    scope.toggleView = function() {
+      let nView = (scope.schedView+1)%2;
+      scope.viewIcon = view_icon[nView]; // TODO: find a way to make this work
+      e = document.getElementById(view_id[scope.schedView]);
+      e.style.display = 'none';
+      e = document.getElementById(view_id[nView]);
+      e.style.display = '';
+      scope.schedView = nView
+    }
+  })(scope);
+</script>
+</head>
+<body>
+<table style="width:100%">
+  <tbody class="header" id="header">
+    <tr>
+      <td colspan=3><span>Device</span></td>
+      <td colspan=5 onclick="" id="td24">
+        <span id="v24" style="font-size:120%">{{ device }}</span>
+      </td>
+      <td colspan=2 rowspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="toggleView('sun')"> 
+          <i aria-hidden="true" class="calendar outline icon"></i>
+        </button> 
+      </td>
+      <td colspan=2 rowspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="toggleView('calendar outline')"> 
+          <i aria-hidden="true" class="sun icon"></i>
+        </button> 
+      </td>
+    </tr>
+    <tr>
+      <td colspan=3><span>Day</span></td>
+      <td colspan=5 onclick="setAction('25')" id="td25">
+        <span id="v25" style="cursor:pointer;font-size:120%;width:100%">{{ day }}</span>
+      </td>
+    </tr>
+    <tr style="height:2px">
+      <td colspan=12 style="background-color:#9E9E9E;height:2px;"></td> 
+    </tr>
+  </tbody>
+  <tbody id="schedule">
+    <tr>
+      <td onclick="setAction('0')" class="thedays"><span id="v0" class="theaction"></span><div id="t0" class="theblocks"></div></td>
+      <td onclick="setAction('1')" class="thedays"><span id="v1" class="theaction"></span><div id="t1" class="theblocks"></div></td>
+      <td onclick="setAction('2')" class="thedays"><span id="v2" class="theaction"></span><div id="t2" class="theblocks"></div></td>
+      <td onclick="setAction('3')" class="thedays"><span id="v3" class="theaction"></span><div id="t3" class="theblocks"></div></td>
+      <td onclick="setAction('4')" class="thedays"><span id="v4" class="theaction"></span><div id="t4" class="theblocks"></div></td>
+      <td onclick="setAction('5')" class="thedays"><span id="v5" class="theaction"></span><div id="t5" class="theblocks"></div></td>
+      <td onclick="setAction('6')" class="thedays"><span id="v6" class="theaction"></span><div id="t6" class="theblocks"></div></td>
+      <td onclick="setAction('7')" class="thedays"><span id="v7" class="theaction"></span><div id="t7" class="theblocks"></div></td>
+      <td onclick="setAction('8')" class="thedays"><span id="v8" class="theaction"></span><div id="t8" class="theblocks"></div></td>
+      <td onclick="setAction('9')" class="thedays"><span id="v9" class="theaction"></span><div id="t9" class="theblocks"></div></td>
+      <td onclick="setAction('10')" class="thedays"><span id="v10" class="theaction"></span><div id="t10" class="theblocks"></div></td>
+      <td onclick="setAction('11')" class="thedays"><span id="v11" class="theaction"></span><div id="t11" class="theblocks"></div></td>
+    </tr> 
+    <tr style="height:2px">
+      <td id="td0" class="the2px"></td>
+      <td id="td1" class="the2px"></td>
+      <td id="td2" class="the2px"></td>
+      <td id="td3" class="the2px"></td>
+      <td id="td4" class="the2px"></td>
+      <td id="td5" class="the2px"></td>
+      <td id="td6" class="the2px"></td>
+      <td id="td7" class="the2px"></td>
+      <td id="td8" class="the2px"></td>
+      <td id="td9" class="the2px"></td>
+      <td id="td10" class="the2px"></td>
+      <td id="td11" class="the2px"></td>
+    </tr> 
+    <tr>
+      <td align="center">0</td>
+      <td align="center">1</td>
+      <td align="center">2</td>
+      <td align="center">3</td>
+      <td align="center">4</td>
+      <td align="center">5</td>
+      <td align="center">6</td>
+      <td align="center">7</td>
+      <td align="center">8</td>
+      <td align="center">9</td>
+      <td align="center">10</td>
+      <td align="center">11</td>
+    </tr> 
+    <tr>
+      <td onclick="setAction('12')" class="thedays"><span id="v12" class="theaction"></span><div id="t12" class="theblocks"></div></td>
+      <td onclick="setAction('13')" class="thedays"><span id="v13" class="theaction"></span><div id="t13" class="theblocks"></div></td>
+      <td onclick="setAction('14')" class="thedays"><span id="v14" class="theaction"></span><div id="t14" class="theblocks"></div></td>
+      <td onclick="setAction('15')" class="thedays"><span id="v15" class="theaction"></span><div id="t15" class="theblocks"></div></td>
+      <td onclick="setAction('16')" class="thedays"><span id="v16" class="theaction"></span><div id="t16" class="theblocks"></div></td>
+      <td onclick="setAction('17')" class="thedays"><span id="v17" class="theaction"></span><div id="t17" class="theblocks"></div></td>
+      <td onclick="setAction('18')" class="thedays"><span id="v18" class="theaction"></span><div id="t18" class="theblocks"></div></td>
+      <td onclick="setAction('19')" class="thedays"><span id="v19" class="theaction"></span><div id="t19" class="theblocks"></div></td>
+      <td onclick="setAction('20')" class="thedays"><span id="v20" class="theaction"></span><div id="t20" class="theblocks"></div></td>
+      <td onclick="setAction('21')" class="thedays"><span id="v21" class="theaction"></span><div id="t21" class="theblocks"></div></td>
+      <td onclick="setAction('22')" class="thedays"><span id="v22" class="theaction"></span><div id="t22" class="theblocks"></div></td>
+      <td onclick="setAction('23')" class="thedays"><span id="v23" class="theaction"></span><div id="t23" class="theblocks"></div></td>
+    </tr> 
+    <tr style="height:2px">
+      <td id="td12" class="the2px"></td>
+      <td id="td13" class="the2px"></td>
+      <td id="td14" class="the2px"></td>
+      <td id="td15" class="the2px"></td>
+      <td id="td16" class="the2px"></td>
+      <td id="td17" class="the2px"></td>
+      <td id="td18" class="the2px"></td>
+      <td id="td19" class="the2px"></td>
+      <td id="td20" class="the2px"></td>
+      <td id="td21" class="the2px"></td>
+      <td id="td21" class="the2px"></td>
+      <td id="td23" class="the2px"></td>
+    </tr> 
+    <tr>
+      <td align="center">12</td>
+      <td align="center">13</td>
+      <td align="center">14</td>
+      <td align="center">15</td>
+      <td align="center">16</td>
+      <td align="center">17</td>
+      <td align="center">18</td>
+      <td align="center">19</td>
+      <td align="center">20</td>
+      <td align="center">21</td>
+      <td align="center">22</td>
+      <td align="center">23</td>
+    </tr> 
+  </tbody>
+  <tbody id="sunevent" style="display:none">
+    <tr class="thedays"><td colspan=12>&nbsp;</td></tr>
+    <tr>
+      <td colspan=4>Lights on at:</td>
+      <td onclick="setAction('26')" colspan=8 id="td26" style="height:25px;">
+        <span id="v26" style="cursor:pointer;font-size:120%;width:100%;">{{ sunon }}</span>
+      </td>
+    </tr>
+    <tr style="height:2px"></tr>
+    <tr style="height:2px"></tr>
+    <tr>
+      <td colspan=4>Lights off at:</td>
+      <td onclick="setAction('27')" colspan=8 id="td27" style="height:25px;">
+        <span id="v27" style="cursor:pointer;font-size:120%;width:100%;">{{ sunoff }}</span>
+      </td>
+    </tr>
+    <tr class="thedays"><td colspan=12>&nbsp;</td></tr>
+  </tbody>
+  <tbody class="footer">
+    <tr height="5px"><td colspan="12"></td></tr>
+    <tr height="20px">
+      <td colspan=2 class="smallheadings">Status:</td>
+      <td colspan=10 ><center><span id="info" class="smallheadings" ></span></center></td>
+    </tr>
+    <tr height="5px"><td colspan="12"></td></tr>
+    <tr>
+      <td style="width:24px">&nbsp;</td>
+      <td colspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="prev()"> 
+          <i aria-hidden="true" class="arrow left icon"></i>
+        </button> 
+      </td>
+      <td colspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="next()"> 
+          <i aria-hidden="true" class="arrow right icon"></i>
+        </button> 
+      </td>
+      <td colspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="copy()"> 
+          <i aria-hidden="true" class="copy icon"></i>
+        </button> 
+      </td>
+      <td colspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="save()"> 
+          <i aria-hidden="true" class="save icon"></i>
+        </button> 
+      </td>
+      <td colspan=2 style="text-align:center">
+        <button class="ui icon button" onclick="cancel()"> 
+          <i aria-hidden="true" class="cancel icon"></i>
+        </button> 
+      </td>
+      <td style="width:24px">&nbsp;</td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>
